@@ -177,7 +177,7 @@ We use flake 8 to lint our code. Please keep the repository clean by running:
 flake8
 ```
 
-<!--### Testing
+### Testing
 
 Tests are located in the [tests](./tests) directory.
 
@@ -185,11 +185,11 @@ To run the tests in the `tests` folder, you can run the following command
 from the project root.
 
 ```
-coverage run --source=ciscosparkbot setup.py test
+coverage run --source=webexteamsbot setup.py test
 coverage html
 ```
 
-This will generate a code coverage report in a directory called `htmlcov`-->
+This will generate a code coverage report in a directory called `htmlcov`
 
 # Credits
 This package was created with
