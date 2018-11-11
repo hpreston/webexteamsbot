@@ -1,6 +1,8 @@
 # webexteamsbot
 This package makes creating [Webex Teams](https://www.webex.com/products/teams/index.html) bots in Python super simple.  
 
+[![PyPI version](https://badge.fury.io/py/webexteamsbot.svg)](https://badge.fury.io/py/webexteamsbot)
+
 > This package is based on the previous [ciscosparkbot](https://github.com/imapex/ciscosparkbot) project.  This version will both move to new Webex Teams branding as well as add new functionality.  If you've used `ciscosparkbot` you will find this package very similar and familiar.  
 
 # Prerequisites 
@@ -192,6 +194,8 @@ coverage html
 This will generate a code coverage report in a directory called `htmlcov`
 
 # Credits
+The initial packaging of the original `ciscosparkbot` project was done by [Kevin Corbin](https://github.com/kecorbin).  
+
 This package was created with
 [Cookiecutter](https://github.com/audreyr/cookiecutter) and the
 [audreyr/cookiecutter-pypackage](https://github.com/audreyr/cookiecutter-pypackage)
