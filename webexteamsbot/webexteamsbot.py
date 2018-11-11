@@ -17,10 +17,16 @@ import json
 class TeamsBot(Flask):
     """An instance of a Webex Teams Bot"""
 
-    def __init__(self, teams_bot_name, teams_bot_token=None,
-                 teams_api_url=None,
-                 teams_bot_email=None, teams_bot_url=None,
-                 default_action="/help", debug=False):
+    def __init__(
+        self,
+        teams_bot_name,
+        teams_bot_token=None,
+        teams_api_url=None,
+        teams_bot_email=None,
+        teams_bot_url=None,
+        default_action="/help",
+        debug=False,
+    ):
         """
         Initialize a new TeamsBot
 
@@ -37,11 +43,16 @@ class TeamsBot(Flask):
         super(TeamsBot, self).__init__(teams_bot_name)
 
         # Verify required parameters provided
-        if None in (teams_bot_name, teams_bot_token,
-                    teams_bot_email, teams_bot_token):
-            raise ValueError("TeamsBot requires teams_bot_name, "
-                             "teams_bot_token, teams_bot_email, teams_bot_url"
-                             )
+        if None in (
+            teams_bot_name,
+            teams_bot_token,
+            teams_bot_email,
+            teams_bot_token,
+        ):
+            raise ValueError(
+                "TeamsBot requires teams_bot_name, "
+                "teams_bot_token, teams_bot_email, teams_bot_url"
+            )
 
         self.DEBUG = debug
         self.teams_bot_name = teams_bot_name
@@ -51,9 +62,10 @@ class TeamsBot(Flask):
         self.default_action = default_action
 
         # Create Teams API Object for interacting with Teams
-        if (teams_api_url):
-            self.teams = WebexTeamsAPI(access_token=teams_bot_token,
-                                       base_url=teams_api_url)
+        if teams_api_url:
+            self.teams = WebexTeamsAPI(
+                access_token=teams_bot_token, base_url=teams_api_url
+            )
         else:
             self.teams = WebexTeamsAPI(access_token=teams_bot_token)
 
@@ -61,26 +73,23 @@ class TeamsBot(Flask):
         # Each key in the dictionary is a command, with associated help
         # text and callback function
         # By default supports 2 command, /echo and /help
-        self.commands = {"/echo": {
-                            "help": "Reply back with the same message sent.",
-                            "callback": self.send_echo
-                            },
-                         "/help": {
-                            "help": "Get help.",
-                            "callback": self.send_help
-                            }
-                         }
+        self.commands = {
+            "/echo": {
+                "help": "Reply back with the same message sent.",
+                "callback": self.send_echo,
+            },
+            "/help": {"help": "Get help.", "callback": self.send_help},
+        }
 
         # Flask Application URLs
         # Basic Health Check for Flask Application
-        self.add_url_rule('/health', 'health', self.health)
+        self.add_url_rule("/health", "health", self.health)
         # Endpoint to enable dynamically configuring account
-        self.add_url_rule('/config', 'config', self.config_bot)
+        self.add_url_rule("/config", "config", self.config_bot)
         # Teams WebHook Target
-        self.add_url_rule('/',
-                          'index',
-                          self.process_incoming_message,
-                          methods=['POST'])
+        self.add_url_rule(
+            "/", "index", self.process_incoming_message, methods=["POST"]
+        )
 
         # Setup the Teams WebHook and connections.
         self.teams_setup()
@@ -101,8 +110,9 @@ class TeamsBot(Flask):
 
         # Setup the Teams Connection
         globals()["teams"] = WebexTeamsAPI(access_token=self.teams_bot_token)
-        globals()["webhook"] = self.setup_webhook(self.teams_bot_name,
-                                                  self.teams_bot_url)
+        globals()["webhook"] = self.setup_webhook(
+            self.teams_bot_name, self.teams_bot_url
+        )
         sys.stderr.write("Configuring Webhook. \n")
         sys.stderr.write("Webhook ID: " + globals()["webhook"].id + "\n")
 
@@ -129,18 +139,20 @@ class TeamsBot(Flask):
         # we reached the end of the generator w/o finding a matching webhook
         if wh is None:
             sys.stderr.write("Creating new webhook.\n")
-            wh = self.teams.webhooks.create(name=name,
-                                            targetUrl=targeturl,
-                                            resource="messages",
-                                            event="created")
+            wh = self.teams.webhooks.create(
+                name=name,
+                targetUrl=targeturl,
+                resource="messages",
+                event="created",
+            )
 
         # if we have an existing webhook update it
         else:
             # Need try block because if there are NO webhooks it throws error
             try:
-                wh = self.teams.webhooks.update(webhookId=wh.id,
-                                                name=name,
-                                                targetUrl=targeturl)
+                wh = self.teams.webhooks.update(
+                    webhookId=wh.id, name=name, targetUrl=targeturl
+                )
             # https://github.com/CiscoDevNet/ciscoteamsapi/blob/master/ciscoteamsapi/api/webhooks.py#L237
             except Exception as e:
                 msg = "Encountered an error updating webhook: {}"
@@ -154,10 +166,12 @@ class TeamsBot(Flask):
         :return: Configuration Data for Bot
         """
         # Return the config detail to API requests
-        config_data = dict(SPARK_BOT_EMAIL=self.teams_bot_email,
-                           SPARK_BOT_TOKEN="--Redacted--",
-                           SPARK_BOT_URL=self.teams_bot_url,
-                           SPARK_BOT_NAME=self.teams_bot_name)
+        config_data = dict(
+            SPARK_BOT_EMAIL=self.teams_bot_email,
+            SPARK_BOT_TOKEN="--Redacted--",
+            SPARK_BOT_URL=self.teams_bot_url,
+            SPARK_BOT_NAME=self.teams_bot_name,
+        )
 
         return json.dumps(config_data)
 
@@ -298,7 +312,7 @@ class TeamsBot(Flask):
         :return:
         """
         cmd_loc = text.find(command)
-        message = text[cmd_loc + len(command):]
+        message = text[cmd_loc + len(command) :]
         return message
 
     # *** Default Commands included in Bot
