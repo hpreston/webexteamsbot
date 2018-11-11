@@ -45,6 +45,8 @@ If you don't already have a [Webex Teams](https://www.webex.com/products/teams/i
 
 1. The easiest way to use this module is to set a few environment variables
 
+    > Note: See [ngrok](#ngrok) for details on setting up an easy HTTP tunnel for development.
+
     ```
     export TEAMS_BOT_URL=https://mypublicsite.io
     export TEAMS_BOT_TOKEN=<your bots token>
