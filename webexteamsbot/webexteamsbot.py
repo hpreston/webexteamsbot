@@ -278,7 +278,9 @@ class TeamsBot(Flask):
 
         # allow command handlers to craft their own Teams message
         if reply and isinstance(reply, Response):
-            reply.roomId = room_id
+            # If the Response lacks a roomId, set it to the incoming room
+            if not reply.roomId:
+                reply.roomId = room_id
             reply = reply.as_dict()
             self.teams.messages.create(**reply)
             reply = "ok"
