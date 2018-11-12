@@ -4,6 +4,7 @@ Sample code for using webexteamsbot
 """
 
 import os
+import requests
 from webexteamsbot import TeamsBot
 from webexteamsbot.models import Response
 
@@ -73,6 +74,47 @@ def ret_message(incoming_msg):
     return response
 
 
+# An example command the illustrates using details from incoming message within
+# the command processing.
+def current_time(incoming_msg):
+    """
+    Sample function that returns the current time for a provided timezone
+    :param incoming_msg: The incoming message object from Teams
+    :return: A Response object based reply
+    """
+    # Extract the message content, without the command "/time"
+    timezone = bot.extract_message("/time", incoming_msg.text).strip()
+
+    # Craft REST API URL to retrieve current time
+    #   Using API from http://worldclockapi.com
+    u = "http://worldclockapi.com/api/json/{timezone}/now".format(
+        timezone=timezone
+    )
+    r = requests.get(u).json()
+
+    # If an invalid timezone is provided, the serviceResponse will include
+    # error message
+    if r["serviceResponse"]:
+        return "Error: " + r["serviceResponse"]
+
+    # Format of returned data is "YYYY-MM-DDTHH:MM<OFFSET>"
+    #   Example "2018-11-11T22:09-05:00"
+    returned_data = r["currentDateTime"].split("T")
+    cur_date = returned_data[0]
+    cur_time = returned_data[1][:5]
+    timezone_name = r["timeZoneName"]
+
+    # Craft a reply string.
+    reply = "In {TZ} it is currently {TIME} on {DATE}.".format(
+        TZ=timezone_name, TIME=cur_time, DATE=cur_date
+    )
+    return reply
+
+
+# Create help message for current_time command
+current_time_help = "Look up the current time for a given timezone. "
+current_time_help += "_Example: **/time EST**_"
+
 # Set the bot greeting.
 bot.set_greeting(greeting)
 
@@ -81,6 +123,7 @@ bot.add_command("/dosomething", "help for do something", do_something)
 bot.add_command(
     "/demo", "Sample that creates a Teams message to be returned.", ret_message
 )
+bot.add_command("/time", current_time_help, current_time)
 
 # Every bot includes a default "/echo" command.  You can remove it, or any
 # other command with the remove_command(command) method.
