@@ -13,6 +13,19 @@ teams_token = os.getenv("TEAMS_BOT_TOKEN")
 bot_url = os.getenv("TEAMS_BOT_URL")
 bot_app_name = os.getenv("TEAMS_BOT_APP_NAME")
 
+# Create a custom bot greeting function returned when no command is given.
+# The default behavior of the bot is to return the '/help' command response
+def greeting(incoming_msg):
+    # Loopkup details about sender
+    sender = bot.teams.people.get(incoming_msg.personId)
+
+    # Create a Response object and craft a reply in Markdown.
+    response = Response()
+    response.markdown = "Hello {nickname}, I'm a chat bot.  See what I can do by asking for **/help**.".format(
+        nickname=sender.firstName
+    )
+    return response
+
 
 def do_something(incoming_msg):
     """
@@ -40,6 +53,8 @@ bot = TeamsBot(
     debug=True,
 )
 
+# Change the bot greeting
+bot.set_greeting(greeting)
 
 # Add new command
 bot.add_command("/dosomething", "help for do something", do_something)

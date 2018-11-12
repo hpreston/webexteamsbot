@@ -315,6 +315,17 @@ class TeamsBot(Flask):
         message = text[cmd_loc + len(command) :]
         return message
 
+    def set_greeting(self, callback):
+        """
+        Configure the response provided by the bot when no command is found.
+        :param callback: The function to run to create and return the greeting.
+        :return:
+        """
+        self.add_command(
+            command="/greeting", help_message="*", callback=callback
+        )
+        self.default_action = "/greeting"
+
     # *** Default Commands included in Bot
     def send_help(self, post_data):
         """
