@@ -1,7 +1,8 @@
 # webexteamsbot
+
 This package makes creating [Webex Teams](https://www.webex.com/products/teams/index.html) bots in Python super simple.  
 
-[![PyPI version](https://badge.fury.io/py/webexteamsbot.svg)](https://badge.fury.io/py/webexteamsbot)
+[![PyPI version](https://badge.fury.io/py/webexteamsbot.svg)](https://badge.fury.io/py/webexteamsbot) [![published](https://static.production.devnetcloud.com/codeexchange/assets/images/devnet-published.svg)](https://developer.cisco.com/codeexchange/github/repo/hpreston/webexteamsbot)
 
 > This package is based on the previous [ciscosparkbot](https://github.com/imapex/ciscosparkbot) project.  This version will both move to new Webex Teams branding as well as add new functionality.  If you've used `ciscosparkbot` you will find this package very similar and familiar.  
 
