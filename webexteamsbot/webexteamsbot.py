@@ -25,6 +25,8 @@ class TeamsBot(Flask):
         teams_bot_email=None,
         teams_bot_url=None,
         default_action="/help",
+        webhook_resource="messages",
+        webhook_event="created",
         debug=False,
     ):
         """
@@ -37,6 +39,10 @@ class TeamsBot(Flask):
         :param teams_bot_url: WebHook URL for this Bot
         :param default_action: What action to take if no command found.
                                Defaults to /help
+        :param webhook_resource: What resource to trigger webhook on
+                               Defaults to messages
+        :param webhook_event: What resource event to trigger webhook on
+                               Defaults to created
         :param debug: boolean value for debut messages
         """
 
@@ -60,6 +66,8 @@ class TeamsBot(Flask):
         self.teams_bot_email = teams_bot_email
         self.teams_bot_url = teams_bot_url
         self.default_action = default_action
+        self.webhook_resource = webhook_resource
+        self.webhook_event = webhook_event
 
         # Create Teams API Object for interacting with Teams
         if teams_api_url:
@@ -114,13 +122,13 @@ class TeamsBot(Flask):
         # Setup the Teams Connection
         globals()["teams"] = WebexTeamsAPI(access_token=self.teams_bot_token)
         globals()["webhook"] = self.setup_webhook(
-            self.teams_bot_name, self.teams_bot_url
+            self.teams_bot_name, self.teams_bot_url, self.webhook_resource, self.webhook_event
         )
         sys.stderr.write("Configuring Webhook. \n")
         sys.stderr.write("Webhook ID: " + globals()["webhook"].id + "\n")
 
     # noinspection PyMethodMayBeStatic
-    def setup_webhook(self, name, targeturl):
+    def setup_webhook(self, name, targeturl, wh_resource, wh_event):
         """
         Setup Teams WebHook to send incoming messages to this bot.
         :param name: Name of the WebHook
@@ -145,16 +153,17 @@ class TeamsBot(Flask):
             wh = self.teams.webhooks.create(
                 name=name,
                 targetUrl=targeturl,
-                resource="messages",
-                event="created",
+                resource=wh_resource,
+                event=wh_event,
             )
 
-        # if we have an existing webhook update it
+        # if we have an existing webhook, delete and recreate (can't update resource/event)
         else:
             # Need try block because if there are NO webhooks it throws error
             try:
-                wh = self.teams.webhooks.update(
-                    webhookId=wh.id, name=name, targetUrl=targeturl
+                wh = self.teams.webhooks.delete(webhookId=wh.id)
+                wh = self.teams.webhooks.create(
+                    name=name, targetUrl=targeturl, resource=wh_resource, event=wh_event
                 )
             # https://github.com/CiscoDevNet/ciscoteamsapi/blob/master/ciscoteamsapi/api/webhooks.py#L237
             except Exception as e:
@@ -229,6 +238,7 @@ class TeamsBot(Flask):
         and determine reply.
         :return:
         """
+        reply = None
 
         # Get the webhook data
         post_data = request.json
@@ -236,48 +246,54 @@ class TeamsBot(Flask):
         # Determine the Teams Room to send reply to
         room_id = post_data["data"]["roomId"]
 
-        # Get the details about the message that was sent.
-        message_id = post_data["data"]["id"]
-        message = self.teams.messages.get(message_id)
-        if self.DEBUG:
-            sys.stderr.write("Message content:" + "\n")
-            sys.stderr.write(str(message) + "\n")
-
-        # First make sure not processing a message from the bots
-        # Needed to avoid the bot talking to itself
-        # We check using IDs instead of emails since the email
-        # of the bot could change while the bot is running
-        # for example from bot@teamsbot.io to bot@webex.bot
-        if message.personId in self.teams.people.me().id:
+        if post_data["resource"] != "messages":
+            if post_data["resource"] in self.commands.keys():
+                reply = self.commands[post_data["resource"]]["callback"](self, post_data)
+            else:
+                return ""
+        elif post_data["resource"] == "messages":
+            # Get the details about the message that was sent.
+            message_id = post_data["data"]["id"]
+            message = self.teams.messages.get(message_id)
             if self.DEBUG:
-                sys.stderr.write("Ignoring message from our self" + "\n")
-            return ""
+                sys.stderr.write("Message content:" + "\n")
+                sys.stderr.write(str(message) + "\n")
 
-        # Log details on message
-        sys.stderr.write("Message from: " + message.personEmail + "\n")
+            # First make sure not processing a message from the bots
+            # Needed to avoid the bot talking to itself
+            # We check using IDs instead of emails since the email
+            # of the bot could change while the bot is running
+            # for example from bot@teamsbot.io to bot@webex.bot
+            if message.personId in self.teams.people.me().id:
+                if self.DEBUG:
+                    sys.stderr.write("Ignoring message from our self" + "\n")
+                return ""
 
-        # Find the command that was sent, if any
-        command = ""
-        for c in self.commands.items():
-            if message.text.lower().find(c[0]) != -1:
-                command = c[0]
-                sys.stderr.write("Found command: " + command + "\n")
-                # If a command was found, stop looking for others
-                break
+            # Log details on message
+            sys.stderr.write("Message from: " + message.personEmail + "\n")
 
-        # Build the reply to the user
-        reply = ""
+            # Find the command that was sent, if any
+            command = ""
+            for c in self.commands.items():
+                if message.text.lower().find(c[0]) != -1:
+                    command = c[0]
+                    sys.stderr.write("Found command: " + command + "\n")
+                    # If a command was found, stop looking for others
+                    break
 
-        # Take action based on command
-        # If no command found, send the default_action
-        if command in [""] and self.default_action:
-            # noinspection PyCallingNonCallable
-            reply = self.commands[self.default_action]["callback"](message)
-        elif command in self.commands.keys():
-            # noinspection PyCallingNonCallable
-            reply = self.commands[command]["callback"](message)
-        else:
-            pass
+            # Build the reply to the user
+            reply = ""
+
+            # Take action based on command
+            # If no command found, send the default_action
+            if command in [""] and self.default_action:
+                # noinspection PyCallingNonCallable
+                reply = self.commands[self.default_action]["callback"](message)
+            elif command in self.commands.keys():
+                # noinspection PyCallingNonCallable
+                reply = self.commands[command]["callback"](message)
+            else:
+                pass
 
         # allow command handlers to craft their own Teams message
         if reply and isinstance(reply, Response):
