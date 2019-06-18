@@ -248,7 +248,8 @@ class TeamsBot(Flask):
 
         if post_data["resource"] != "messages":
             if post_data["resource"] in self.commands.keys():
-                reply = self.commands[post_data["resource"]]["callback"](self, post_data)
+                api = WebexTeamsAPI(access_token=self.teams_bot_token)
+                reply = self.commands[post_data["resource"]]["callback"](api, post_data)
             else:
                 return ""
         elif post_data["resource"] == "messages":
