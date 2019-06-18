@@ -122,7 +122,8 @@ class TeamsBot(Flask):
         # Setup the Teams Connection
         globals()["teams"] = WebexTeamsAPI(access_token=self.teams_bot_token)
         globals()["webhook"] = self.setup_webhook(
-            self.teams_bot_name, self.teams_bot_url, self.webhook_resource, self.webhook_event
+            self.teams_bot_name, self.teams_bot_url,
+            self.webhook_resource, self.webhook_event
         )
         sys.stderr.write("Configuring Webhook. \n")
         sys.stderr.write("Webhook ID: " + globals()["webhook"].id + "\n")
@@ -157,13 +158,15 @@ class TeamsBot(Flask):
                 event=wh_event,
             )
 
-        # if we have an existing webhook, delete and recreate (can't update resource/event)
+        # if we have an existing webhook, delete and recreate
+        #   (can't update resource/event)
         else:
             # Need try block because if there are NO webhooks it throws error
             try:
                 wh = self.teams.webhooks.delete(webhookId=wh.id)
                 wh = self.teams.webhooks.create(
-                    name=name, targetUrl=targeturl, resource=wh_resource, event=wh_event
+                    name=name, targetUrl=targeturl,
+                    resource=wh_resource, event=wh_event
                 )
             # https://github.com/CiscoDevNet/ciscoteamsapi/blob/master/ciscoteamsapi/api/webhooks.py#L237
             except Exception as e:
@@ -249,7 +252,8 @@ class TeamsBot(Flask):
         if post_data["resource"] != "messages":
             if post_data["resource"] in self.commands.keys():
                 api = WebexTeamsAPI(access_token=self.teams_bot_token)
-                reply = self.commands[post_data["resource"]]["callback"](api, post_data)
+                p = post_data
+                reply = self.commands[p["resource"]]["callback"](api, p)
             else:
                 return ""
         elif post_data["resource"] == "messages":
@@ -316,7 +320,8 @@ class TeamsBot(Flask):
         :param callback: The function to run when this command is given
         :return:
         """
-        self.commands[command.lower()] = {"help": help_message, "callback": callback}
+        self.commands[command.lower()] = {"help": help_message,
+                                          "callback": callback}
 
     def remove_command(self, command):
         """
@@ -334,7 +339,7 @@ class TeamsBot(Flask):
         :return:
         """
         cmd_loc = text.find(command)
-        message = text[cmd_loc + len(command) :]
+        message = text[cmd_loc + len(command):]
         return message
 
     def set_greeting(self, callback):
@@ -350,7 +355,8 @@ class TeamsBot(Flask):
 
     def set_help_message(self, msg):
         """
-        Configure the banner for the help message. Command list will be appended to this later.
+        Configure the banner for the help message.
+        Command list will be appended to this later.
         :return:
         """
         self.help_message = msg
