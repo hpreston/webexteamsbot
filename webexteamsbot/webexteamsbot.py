@@ -81,6 +81,9 @@ class TeamsBot(Flask):
             "/help": {"help": "Get help.", "callback": self.send_help},
         }
 
+        # Set default help message
+        self.help_message = "Hello!  I understand the following commands:  \n"
+
         # Flask Application URLs
         # Basic Health Check for Flask Application
         self.add_url_rule("/health", "health", self.health)
@@ -256,7 +259,7 @@ class TeamsBot(Flask):
         # Find the command that was sent, if any
         command = ""
         for c in self.commands.items():
-            if message.text.find(c[0]) != -1:
+            if message.text.lower().find(c[0]) != -1:
                 command = c[0]
                 sys.stderr.write("Found command: " + command + "\n")
                 # If a command was found, stop looking for others
@@ -296,7 +299,7 @@ class TeamsBot(Flask):
         :param callback: The function to run when this command is given
         :return:
         """
-        self.commands[command] = {"help": help_message, "callback": callback}
+        self.commands[command.lower()] = {"help": help_message, "callback": callback}
 
     def remove_command(self, command):
         """
@@ -328,6 +331,13 @@ class TeamsBot(Flask):
         )
         self.default_action = "/greeting"
 
+    def set_help_message(self, msg):
+        """
+        Configure the banner for the help message. Command list will be appended to this later.
+        :return:
+        """
+        self.help_message = msg
+
     # *** Default Commands included in Bot
     def send_help(self, post_data):
         """
@@ -335,9 +345,8 @@ class TeamsBot(Flask):
         :param post_data:
         :return:
         """
-        message = "Hello!  "
-        message += "I understand the following commands:  \n"
-        for c in self.commands.items():
+        message = self.help_message
+        for c in sorted(self.commands.items()):
             if c[1]["help"][0] != "*":
                 message += "* **%s**: %s \n" % (c[0], c[1]["help"])
         return message
