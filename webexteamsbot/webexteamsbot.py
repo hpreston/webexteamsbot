@@ -39,14 +39,15 @@ class TeamsBot(Flask):
         :param teams_bot_email: Teams Bot Email Address
         :param teams_bot_url: WebHook URL for this Bot
         :param default_action: What action to take if no command found.
-                               Defaults to /help
+                Defaults to /help
         :param webhook_resource: What resource to trigger webhook on
-                               Defaults to messages
+                Defaults to messages
         :param webhook_event: What resource event to trigger webhook on
-                               Defaults to created
-        :param webhook_resource_event: List of dicts for which resource/events to create webhooks for.
-                                        [{"resource": "messages", "event": "created"},
-                                         {"resource": "attachmentActions", "event": "created"}]
+                Defaults to created
+        :param webhook_resource_event: List of dicts for which resource/events
+                to create webhooks for.
+                [{"resource": "messages", "event": "created"},
+                {"resource": "attachmentActions", "event": "created"}]
         :param debug: boolean value for debut messages
         """
 
@@ -131,21 +132,25 @@ class TeamsBot(Flask):
         globals()["teams"] = WebexTeamsAPI(access_token=self.teams_bot_token)
         globals()["webhook"] = self.setup_webhook(
             self.teams_bot_name, self.teams_bot_url,
-            self.webhook_resource, self.webhook_event, self.webhook_resource_event
+            self.webhook_resource, self.webhook_event,
+            self.webhook_resource_event
         )
         sys.stderr.write("Configuring Webhook. \n")
         for w in globals()["webhook"]:
             sys.stderr.write("Webhook ID: " + w.id + "\n")
 
     # noinspection PyMethodMayBeStatic
-    def setup_webhook(self, name, targeturl, wh_resource, wh_event, wh_resource_event):
+    def setup_webhook(self, name, targeturl, wh_resource, wh_event,
+                      wh_resource_event):
         """
         Setup Teams WebHook to send incoming messages to this bot.
         :param name: Name of the WebHook
         :param targeturl: Target URL for WebHook
-        :param wh_resource: WebHook Resource (attachmentActions, memberships, messages, rooms)
+        :param wh_resource: WebHook Resource
+                (attachmentActions, memberships, messages, rooms)
         :param wh_event: WebHook Event (created, updated, deleted)
-        :param wh_resource_event: List of Dicts including which resource/event mappings to use.
+        :param wh_resource_event: List of Dicts including which
+                resource/event mappings to use.
         :return: WebHook
         """
         # Get a list of current webhooks
@@ -167,7 +172,7 @@ class TeamsBot(Flask):
                     wh = h
 
             # No existing webhook found, create new one
-            # we reached the end of the generator w/o finding a matching webhook
+            # we reached the end of the generator w/o finding matching webhook
             if wh is None:
                 sys.stderr.write("Creating new webhook.\n")
                 wh = self.teams.webhooks.create(
@@ -180,7 +185,7 @@ class TeamsBot(Flask):
             # if we have an existing webhook, delete and recreate
             #   (can't update resource/event)
             else:
-                # Need try block because if there are NO webhooks it throws error
+                # try block because if there are NO webhooks it throws error
                 try:
                     wh = self.teams.webhooks.delete(webhookId=wh.id)
                     wh = self.teams.webhooks.create(
@@ -270,10 +275,11 @@ class TeamsBot(Flask):
         room_id = post_data["data"]["roomId"]
 
         if post_data["resource"] != "messages":
-            if post_data["resource"].lower() in self.commands.keys():
+            cmdcheck = post_data["resource"].lower()
+            if cmdcheck in self.commands.keys():
                 api = WebexTeamsAPI(access_token=self.teams_bot_token)
                 p = post_data
-                reply = self.commands[p["resource"].lower()]["callback"](api, p)
+                reply = self.commands[cmdcheck]["callback"](api, p)
             else:
                 return ""
         elif post_data["resource"] == "messages":
