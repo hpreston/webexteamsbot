@@ -170,6 +170,12 @@ class TeamsBot(Flask):
                 if h.name == searchname:
                     sys.stderr.write("Found existing webhook.  Updating it.\n")
                     wh = h
+                elif h.name == name:
+                    # check for webhook name with original naming convention
+                    #  if found, let's update to the new naming convetion
+                    if w["resource"] == "messages" and w["event"] == "created":
+                        sys.stderr.write("Found old webhook.  Updating it.\n")
+                        wh = h
 
             # No existing webhook found, create new one
             # we reached the end of the generator w/o finding matching webhook
