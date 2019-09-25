@@ -25,6 +25,7 @@ class TeamsBot(Flask):
         teams_bot_email=None,
         teams_bot_url=None,
         default_action="/help",
+        webhook_resource_event=None,
         webhook_resource="messages",
         webhook_event="created",
         debug=False,
@@ -43,6 +44,9 @@ class TeamsBot(Flask):
                                Defaults to messages
         :param webhook_event: What resource event to trigger webhook on
                                Defaults to created
+        :param webhook_resource_event: List of dicts for which resource/events to create webhooks for.
+                                        [{"resource": "messages", "event": "created"},
+                                         {"resource": "attachmentActions", "event": "created"}]
         :param debug: boolean value for debut messages
         """
 
@@ -68,6 +72,7 @@ class TeamsBot(Flask):
         self.default_action = default_action
         self.webhook_resource = webhook_resource
         self.webhook_event = webhook_event
+        self.webhook_resource_event = webhook_resource_event
 
         # Create Teams API Object for interacting with Teams
         if teams_api_url:
@@ -106,7 +111,10 @@ class TeamsBot(Flask):
         self.teams_setup()
 
     # *** Bot Setup and Core Processing Functions
+    def add_new_url(self, path, ep, func):
+        self.add_url_rule(path, ep, func, methods=["GET", "POST", "PUT"])
 
+    # *** Bot Setup and Core Processing Functions
     def teams_setup(self):
         """
         Setup the Teams Connection and WebHook
@@ -123,57 +131,69 @@ class TeamsBot(Flask):
         globals()["teams"] = WebexTeamsAPI(access_token=self.teams_bot_token)
         globals()["webhook"] = self.setup_webhook(
             self.teams_bot_name, self.teams_bot_url,
-            self.webhook_resource, self.webhook_event
+            self.webhook_resource, self.webhook_event, self.webhook_resource_event
         )
         sys.stderr.write("Configuring Webhook. \n")
-        sys.stderr.write("Webhook ID: " + globals()["webhook"].id + "\n")
+        for w in globals()["webhook"]:
+            sys.stderr.write("Webhook ID: " + w.id + "\n")
 
     # noinspection PyMethodMayBeStatic
-    def setup_webhook(self, name, targeturl, wh_resource, wh_event):
+    def setup_webhook(self, name, targeturl, wh_resource, wh_event, wh_resource_event):
         """
         Setup Teams WebHook to send incoming messages to this bot.
         :param name: Name of the WebHook
         :param targeturl: Target URL for WebHook
+        :param wh_resource: WebHook Resource (attachmentActions, memberships, messages, rooms)
+        :param wh_event: WebHook Event (created, updated, deleted)
+        :param wh_resource_event: List of Dicts including which resource/event mappings to use.
         :return: WebHook
         """
         # Get a list of current webhooks
         webhooks = self.teams.webhooks.list()
 
-        # Look for an Existing Webhook with this name, if found update it
-        wh = None
-        # webhooks is a generator
-        for h in webhooks:
-            if h.name == name:
-                sys.stderr.write("Found existing webhook.  Updating it.\n")
-                wh = h
+        whlist = []
+        if not wh_resource_event:
+            wh_resource_event = [{"resource": wh_resource, "event": wh_event}]
 
-        # No existing webhook found, create new one
-        # we reached the end of the generator w/o finding a matching webhook
-        if wh is None:
-            sys.stderr.write("Creating new webhook.\n")
-            wh = self.teams.webhooks.create(
-                name=name,
-                targetUrl=targeturl,
-                resource=wh_resource,
-                event=wh_event,
-            )
+        for w in wh_resource_event:
+            searchname = name + "." + w["resource"] + "." + w["event"]
 
-        # if we have an existing webhook, delete and recreate
-        #   (can't update resource/event)
-        else:
-            # Need try block because if there are NO webhooks it throws error
-            try:
-                wh = self.teams.webhooks.delete(webhookId=wh.id)
+            # Look for an Existing Webhook with this name, if found update it
+            wh = None
+            # webhooks is a generator
+            for h in webhooks:
+                if h.name == searchname:
+                    sys.stderr.write("Found existing webhook.  Updating it.\n")
+                    wh = h
+
+            # No existing webhook found, create new one
+            # we reached the end of the generator w/o finding a matching webhook
+            if wh is None:
+                sys.stderr.write("Creating new webhook.\n")
                 wh = self.teams.webhooks.create(
-                    name=name, targetUrl=targeturl,
-                    resource=wh_resource, event=wh_event
+                    name=searchname,
+                    targetUrl=targeturl,
+                    resource=w["resource"],
+                    event=w["event"],
                 )
-            # https://github.com/CiscoDevNet/ciscoteamsapi/blob/master/ciscoteamsapi/api/webhooks.py#L237
-            except Exception as e:
-                msg = "Encountered an error updating webhook: {}"
-                sys.stderr.write(msg.format(e))
 
-        return wh
+            # if we have an existing webhook, delete and recreate
+            #   (can't update resource/event)
+            else:
+                # Need try block because if there are NO webhooks it throws error
+                try:
+                    wh = self.teams.webhooks.delete(webhookId=wh.id)
+                    wh = self.teams.webhooks.create(
+                        name=searchname, targetUrl=targeturl,
+                        resource=w["resource"], event=w["event"]
+                    )
+                # https://github.com/CiscoDevNet/ciscoteamsapi/blob/master/ciscoteamsapi/api/webhooks.py#L237
+                except Exception as e:
+                    msg = "Encountered an error updating webhook: {}"
+                    sys.stderr.write(msg.format(e))
+            whlist.append(wh)
+
+        return whlist
 
     def config_bot(self):
         """
@@ -250,10 +270,10 @@ class TeamsBot(Flask):
         room_id = post_data["data"]["roomId"]
 
         if post_data["resource"] != "messages":
-            if post_data["resource"] in self.commands.keys():
+            if post_data["resource"].lower() in self.commands.keys():
                 api = WebexTeamsAPI(access_token=self.teams_bot_token)
                 p = post_data
-                reply = self.commands[p["resource"]]["callback"](api, p)
+                reply = self.commands[p["resource"].lower()]["callback"](api, p)
             else:
                 return ""
         elif post_data["resource"] == "messages":
@@ -279,7 +299,7 @@ class TeamsBot(Flask):
 
             # Find the command that was sent, if any
             command = ""
-            for c in self.commands.items():
+            for c in sorted(self.commands.items()):
                 if message.text.lower().find(c[0]) != -1:
                     command = c[0]
                     sys.stderr.write("Found command: " + command + "\n")
