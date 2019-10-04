@@ -17,3 +17,7 @@
 ## 0.1.2.1 (2018-11-11)
 
   - Updated README with a very simple bot example with a link to the full sample.py script
+
+## 0.1.3.0 (2019-10-03)
+
+  - Adding new features for cards and membership management (Thanks @joshand!)

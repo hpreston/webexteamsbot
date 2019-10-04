@@ -54,6 +54,6 @@ setup(
     test_suite='tests',
     tests_require=test_requirements,
     url='https://github.com/hpreston/webexteamsbot',
-    version='0.1.2.1',
+    version='0.1.3.0',
     zip_safe=False,
 )
