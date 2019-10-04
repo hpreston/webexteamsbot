@@ -11,3 +11,4 @@ Sphinx==1.8.1
 twine==1.12.1
 webexteamssdk==1.0.3
 white>=0.1.2
+requests-mock
