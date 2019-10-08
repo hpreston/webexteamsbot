@@ -117,7 +117,7 @@ If you don't already have a [Webex Teams](https://www.webex.com/products/teams/i
         )
         ```
 
-        You also need a way to catch anything other than "messages", which is the only thing handled entirely inside the bot framework. Continuing the example of monitoring for membership changes in a room, you would also need to add a "command" to catch the membership events. You would use this syntax to do so:
+        You also need a way to catch anything other than "messages", which is the only thing handled entirely inside the bot framework. Continuing the example of monitoring for membership changes in a room, you would also need to add a "command" to catch the membership events. You would use the following to do so:
         ```python
         # check membership:all webhook to verify that person added to room (or otherwise modified) is allowed to be in the room 
         def check_memberships(api, incoming_msg):
@@ -164,7 +164,7 @@ If you don't already have a [Webex Teams](https://www.webex.com/products/teams/i
                                     {"resource": "attachmentActions", "event": "created"}]
         )
         ```
-        Once again, You also need a way to catch anything other than "messages". Continuing the example of monitoring card actions, you would also need to add a "command" to catch the card actions. You would use this syntax to do so:
+        Once again, You also need a way to catch anything other than "messages". Continuing the example of monitoring card actions, you would also need to add a "command" to catch the card actions. You would use the following to do so:
         ```python
         # API request to get card actions (not currently covered in webexteamssdk==1.2)
         def get_attachment_actions(attachmentid):
@@ -177,7 +177,7 @@ If you don't already have a [Webex Teams](https://www.webex.com/products/teams/i
             response = requests.get(url, headers=headers)
             return response.json()
     
-        # check attachmentActions:created webhook to verify that person added to room is allowed to be in the room 
+        # check attachmentActions:created webhook to handle any card actions 
         def handle_cards(api, incoming_msg):
             m = get_attachment_actions(incoming_msg["data"]["id"])
             print(m)
