@@ -204,6 +204,7 @@ If you don't already have a [Webex Teams](https://www.webex.com/products/teams/i
     
         bot.add_new_url("/webhooks", "webhooks", handle_webhooks)
         ```
+       The first argument, "/webhooks", represents the URL path to listen for, the second argument represents the Flask endpoint, and the third command is the function to execute to handle GET, PUT, or POST actions.
 
 # ngrok
 
