@@ -7,12 +7,27 @@ import os
 import requests
 from webexteamsbot import TeamsBot
 from webexteamsbot.models import Response
+import sys
 
 # Retrieve required details from environment variables
 bot_email = os.getenv("TEAMS_BOT_EMAIL")
 teams_token = os.getenv("TEAMS_BOT_TOKEN")
 bot_url = os.getenv("TEAMS_BOT_URL")
 bot_app_name = os.getenv("TEAMS_BOT_APP_NAME")
+
+# If any of the bot environment variables are missing, terminate the app
+if not bot_email or not teams_token or not bot_url or not bot_app_name:
+    print("sample.py - Missing Environment Variable. Please see the 'Usage'"
+          " section in the README.")
+    if not bot_email:
+        print("TEAMS_BOT_EMAIL")
+    if not teams_token:
+        print("TEAMS_BOT_TOKEN")
+    if not bot_url:
+        print("TEAMS_BOT_URL")
+    if not bot_app_name:
+        print("TEAMS_BOT_APP_NAME")
+    sys.exit()
 
 # Create a Bot Object
 #   Note: debug mode prints out more details about processing to terminal
