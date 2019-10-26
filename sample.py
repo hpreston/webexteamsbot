@@ -7,12 +7,28 @@ import os
 import requests
 from webexteamsbot import TeamsBot
 from webexteamsbot.models import Response
+import sys
+import json
 
 # Retrieve required details from environment variables
 bot_email = os.getenv("TEAMS_BOT_EMAIL")
 teams_token = os.getenv("TEAMS_BOT_TOKEN")
 bot_url = os.getenv("TEAMS_BOT_URL")
 bot_app_name = os.getenv("TEAMS_BOT_APP_NAME")
+
+# If any of the bot environment variables are missing, terminate the app
+if not bot_email or not teams_token or not bot_url or not bot_app_name:
+    print("sample.py - Missing Environment Variable. Please see the 'Usage'"
+          " section in the README.")
+    if not bot_email:
+        print("TEAMS_BOT_EMAIL")
+    if not teams_token:
+        print("TEAMS_BOT_TOKEN")
+    if not bot_url:
+        print("TEAMS_BOT_URL")
+    if not bot_app_name:
+        print("TEAMS_BOT_APP_NAME")
+    sys.exit()
 
 # Create a Bot Object
 #   Note: debug mode prints out more details about processing to terminal
@@ -22,6 +38,9 @@ bot = TeamsBot(
     teams_bot_url=bot_url,
     teams_bot_email=bot_email,
     debug=True,
+    webhook_resource_event=[{"resource": "messages", "event": "created"},
+                            {"resource": "attachmentActions",
+                             "event": "created"}]
 )
 
 
@@ -49,6 +68,96 @@ def do_something(incoming_msg):
     :return: A text or markdown based reply
     """
     return "i did what you said - {}".format(incoming_msg.text)
+
+
+# This function generates a basic adaptive card and sends it to the user
+# You can use Microsofts Adaptive Card designer here:
+# https://adaptivecards.io/designer/. The formatting that Webex Teams
+# uses isn't the same, but this still helps with the overall layout
+# make sure to take the data that comes out of the MS card designer and
+# put it inside of the "content" below, otherwise Webex won't understand
+# what you send it.
+def show_card(incoming_msg):
+    attachment = '''
+    {
+        "contentType": "application/vnd.microsoft.card.adaptive",
+        "content": {
+            "type": "AdaptiveCard",
+            "body": [{
+                "type": "Container",
+                "items": [{
+                    "type": "TextBlock",
+                    "text": "This is a sample of the adaptive card system."
+                }]
+            }],
+            "actions": [{
+                    "type": "Action.Submit",
+                    "title": "Create",
+                    "data": "add",
+                    "style": "positive",
+                    "id": "button1"
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Delete",
+                    "data": "remove",
+                    "style": "destructive",
+                    "id": "button2"
+                }
+            ],
+            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+            "version": "1.0"
+        }
+    }
+    '''
+    backupmessage = "This is an example using Adaptive Cards."
+
+    c = create_message_with_attachment(incoming_msg.roomId,
+                                       msgtxt=backupmessage,
+                                       attachment=json.loads(attachment))
+    print(c)
+    return ""
+
+
+# An example of how to process card actions
+def handle_cards(api, incoming_msg):
+    """
+    Sample function to handle card actions.
+    :param api: webexteamssdk object
+    :param incoming_msg: The incoming message object from Teams
+    :return: A text or markdown based reply
+    """
+    m = get_attachment_actions(incoming_msg["data"]["id"])
+
+    return "card action was - {}".format(m["inputs"])
+
+
+# Temporary function to send a message with a card attachment (not yet
+# supported by webexteamssdk, but there are open PRs to add this
+# functionality)
+def create_message_with_attachment(rid, msgtxt, attachment):
+    headers = {
+        'content-type': 'application/json; charset=utf-8',
+        'authorization': 'Bearer ' + teams_token
+    }
+
+    url = 'https://api.ciscospark.com/v1/messages'
+    data = {"roomId": rid, "attachments": [attachment], "markdown": msgtxt}
+    response = requests.post(url, json=data, headers=headers)
+    return response.json()
+
+
+# Temporary function to get card attachment actions (not yet supported
+# by webexteamssdk, but there are open PRs to add this functionality)
+def get_attachment_actions(attachmentid):
+    headers = {
+        'content-type': 'application/json; charset=utf-8',
+        'authorization': 'Bearer ' + teams_token
+    }
+
+    url = 'https://api.ciscospark.com/v1/attachment/actions/' + attachmentid
+    response = requests.get(url, headers=headers)
+    return response.json()
 
 
 # An example using a Response object.  Response objects allow more complex
@@ -118,7 +227,9 @@ current_time_help += "_Example: **/time EST**_"
 # Set the bot greeting.
 bot.set_greeting(greeting)
 
-# Add new commands to the box.
+# Add new commands to the bot.
+bot.add_command('attachmentActions', '*', handle_cards)
+bot.add_command("/showcard", "show an adaptive card", show_card)
 bot.add_command("/dosomething", "help for do something", do_something)
 bot.add_command(
     "/demo", "Sample that creates a Teams message to be returned.", ret_message
@@ -128,7 +239,6 @@ bot.add_command("/time", current_time_help, current_time)
 # Every bot includes a default "/echo" command.  You can remove it, or any
 # other command with the remove_command(command) method.
 bot.remove_command("/echo")
-
 
 if __name__ == "__main__":
     # Run Bot
