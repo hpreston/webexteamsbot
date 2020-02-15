@@ -28,6 +28,7 @@ class TeamsBot(Flask):
         webhook_resource_event=None,
         webhook_resource="messages",
         webhook_event="created",
+        approved_users=[], 
         debug=False,
     ):
         """
@@ -48,6 +49,7 @@ class TeamsBot(Flask):
                 to create webhooks for.
                 [{"resource": "messages", "event": "created"},
                 {"resource": "attachmentActions", "event": "created"}]
+        :param approved_users: List of approved users (by email) to interact with bot. Default all users.
         :param debug: boolean value for debut messages
         """
 
@@ -71,6 +73,7 @@ class TeamsBot(Flask):
         self.teams_bot_email = teams_bot_email
         self.teams_bot_url = teams_bot_url
         self.default_action = default_action
+        self.approved_users = approved_users
         self.webhook_resource = webhook_resource
         self.webhook_event = webhook_event
         self.webhook_resource_event = webhook_resource_event
@@ -309,6 +312,12 @@ class TeamsBot(Flask):
             # Log details on message
             sys.stderr.write("Message from: " + message.personEmail + "\n")
 
+            # Check if user is approved
+            if len(self.approved_users) > 0 and message.personEmail not in self.approved_users:
+                # User NOT approved
+                sys.stderr.write("User: " + message.personEmail + " is not approved to interact with bot. Ignoring.\n")
+                return "Unapproved user"
+
             # Find the command that was sent, if any
             command = ""
             for c in sorted(self.commands.items()):
@@ -339,6 +348,16 @@ class TeamsBot(Flask):
                 reply.roomId = room_id
             reply = reply.as_dict()
             self.teams.messages.create(**reply)
+            reply = "ok"
+        # Support returning a list of Responses
+        elif reply and isinstance(reply, list):
+            for response in reply:
+                # Make sure is a Response
+                if isinstance(response, Response):
+                    if not response.roomId:
+                        response.roomId = room_id
+                    self.teams.messages.create(**response.as_dict())
+
             reply = "ok"
         elif reply:
             self.teams.messages.create(roomId=room_id, markdown=reply)

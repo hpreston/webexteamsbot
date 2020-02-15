@@ -16,6 +16,13 @@ teams_token = os.getenv("TEAMS_BOT_TOKEN")
 bot_url = os.getenv("TEAMS_BOT_URL")
 bot_app_name = os.getenv("TEAMS_BOT_APP_NAME")
 
+# Example: How to limit the approved Webex Teams accounts for interaction
+#          Also uncomment the parameter in the instantiation of the new bot
+# List of email accounts of approved users to talk with the bot
+# approved_users = [
+#     "josmith@demo.local",
+# ]
+
 # If any of the bot environment variables are missing, terminate the app
 if not bot_email or not teams_token or not bot_url or not bot_app_name:
     print("sample.py - Missing Environment Variable. Please see the 'Usage'"
@@ -32,12 +39,14 @@ if not bot_email or not teams_token or not bot_url or not bot_app_name:
 
 # Create a Bot Object
 #   Note: debug mode prints out more details about processing to terminal
+#   Note: the `approved_users=approved_users` line commented out and shown as reference
 bot = TeamsBot(
     bot_app_name,
     teams_bot_token=teams_token,
     teams_bot_url=bot_url,
     teams_bot_email=bot_email,
     debug=True,
+    # approved_users=approved_users,
     webhook_resource_event=[{"resource": "messages", "event": "created"},
                             {"resource": "attachmentActions",
                              "event": "created"}]
