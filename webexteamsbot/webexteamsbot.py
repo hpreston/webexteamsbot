@@ -7,6 +7,7 @@ from webexteamssdk import WebexTeamsAPI
 from webexteamsbot.models import Response
 import sys
 import json
+import re
 
 # __author__ = "imapex"
 # __author_email__ = "CiscoTeamsBot@imapex.io"
@@ -434,3 +435,22 @@ class TeamsBot(Flask):
         # Get sent message
         message = self.extract_message("/echo", post_data.text)
         return message
+
+    def add_user(self, user):
+        """
+        Command to add new user to approved_user list
+        :param user:
+        :return:
+        """
+        if re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", user):
+            if user not in self.approved_users:
+                self.approved_users.append(user)
+
+    def remove_user(self, user):
+        """
+        Command to remove user from approved_user list
+        :param user:
+        :return:
+        """
+        if user in self.approved_users:
+            self.approved_users.remove(user)
