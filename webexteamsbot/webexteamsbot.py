@@ -355,6 +355,8 @@ class TeamsBot(Flask):
             else:
                 pass
 
+        # variable to get the message_id form the response
+        # to delete it if necessary
         sent_reply = ""
         # allow command handlers to craft their own Teams message
         if reply and isinstance(reply, Response):
@@ -378,7 +380,8 @@ class TeamsBot(Flask):
             sent_reply = \
                 self.teams.messages.create(roomId=room_id, markdown=reply)
 
-        if "command" in locals():
+        # if variable command exists and sent_reply is not a string
+        if "command" in locals() and not isinstance(sent_reply, str):
             if command in self.commands:
                 if self.commands[command]['after'] > 0:
                     self.async_deletion_start(
