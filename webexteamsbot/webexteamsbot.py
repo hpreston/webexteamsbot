@@ -378,10 +378,12 @@ class TeamsBot(Flask):
             sent_reply = \
                 self.teams.messages.create(roomId=room_id, markdown=reply)
 
-        if self.commands[command]['after'] > 0:
-            self.async_deletion_start(
-                sent_reply.id, self.commands[command]['after']
-            )
+        if "command" in locals():
+            if command in self.commands:
+                if self.commands[command]['after'] > 0:
+                    self.async_deletion_start(
+                        sent_reply.id, self.commands[command]['after']
+                    )
 
         return reply
 
