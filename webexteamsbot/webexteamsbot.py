@@ -105,7 +105,7 @@ class TeamsBot(Flask):
             "/help": {
                 "help": "Get help.",
                 "callback": self.send_help,
-                "after": 10
+                "after": 0
             },
         }
 
