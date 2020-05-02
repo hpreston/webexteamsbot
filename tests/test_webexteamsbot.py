@@ -285,5 +285,51 @@ class TeamsBotTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         print(resp.data)
 
+    @requests_mock.mock()
+    def test_user_approval(self, m):
+        print(self.app)
+        m.get(
+            "https://api.ciscospark.com/v1/webhooks",
+            json=MockTeamsAPI.list_webhooks(),
+        )
+        m.post(
+            "https://api.ciscospark.com/v1/webhooks",
+            json=MockTeamsAPI.create_webhook(),
+        )
+        bot_email = "test@test.com"
+        teams_token = "somefaketoken"
+        bot_url = "http://fakebot.com"
+        bot_app_name = "testbot"
+        # Create a new bot
+        bot = TeamsBot(bot_app_name,
+                       teams_bot_token=teams_token,
+                       teams_bot_url=bot_url,
+                       teams_bot_email=bot_email,
+                       debug=True)
+
+        approval_f = bot._user_approved
+
+        # default approve all users
+        self.assertTrue(approval_f('test@domain1.com'))
+        self.assertTrue(approval_f('test@domain2.com'))
+
+        # approve only by list
+        bot.approved_users = ['test@domain1.com']
+        self.assertTrue(approval_f('test@domain1.com'))
+        self.assertFalse(approval_f('test@domain2.com'))
+
+        # approve only by function
+        bot.approved_users = []
+        bot.user_approval_function = lambda x: x.endswith('@domain1.com')
+        self.assertTrue(approval_f('test@domain1.com'))
+        self.assertFalse(approval_f('test@domain2.com'))
+
+        # approve by both function and list (both must be satisfied)
+        bot.approved_users = ['test@domain2.com', 'test@domain1.com']
+        self.assertTrue(approval_f('test@domain1.com')) # approved by both
+        self.assertFalse(approval_f('test2@domain1.com')) # not approved by list
+        self.assertFalse(approval_f('test@domain2.com')) # not approved by function
+        self.assertFalse(approval_f('test@domain3.com')) # not approved by both
+
     def tearDown(self):
         pass
