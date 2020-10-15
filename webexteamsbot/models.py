@@ -12,6 +12,7 @@ class Response(object):
             self.attributes["markdown"] = None
             self.attributes["html"] = None
             self.attributes["files"] = list()
+            self.attributes["attachments"] = []
 
     @property
     def text(self):
@@ -52,6 +53,14 @@ class Response(object):
     @html.setter
     def html(self, val):
         self.attributes["html"] = val
+    
+    @property
+    def attachments(self):
+        return self.attributes["attachments"]
+
+    @attachments.setter
+    def attachments(self, val):
+        self.attributes["attachments"] = val
 
     def as_dict(self):
         ret = dict()
