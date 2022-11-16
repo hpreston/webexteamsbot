@@ -237,6 +237,34 @@ If you don't already have a [Webex Teams](https://www.webex.com/products/teams/i
     Message from: hapresto@cisco.com
     User: hapresto@cisco.com is not approved to interact with bot. Ignoring.
     ```
+# Deploy in Cisco Exchange Dev environment
+
+If you run this project using Cisco Exchange Dev environment
+
+![webexteamsbot-exchange-devenv](https://raw.githubusercontent.com/CiscoDevNet/code-exchange-repo-template/master/manual-sample-repo/img/webexteamsbot-exchange-devenv.png)
+
+Open a new terminal and run the command to get the external URL:
+
+`echo $DEVENV_APP_9082_URL`
+
+As output, you will see an external URL for the webhook
+
+For example
+`https://app-9082-8093942179345178980.devenv-int.ap-ne-1.devnetcloud.com`
+
+Update your environment with this url
+
+`export TEAMS_BOT_URL=https://this.is.the.url.you.need`
+
+In VSCode DevEnv open file `sample.py`
+At the bottom, in code `bot.run(host="0.0.0.0", port=5000)` change the port from `5000` to `9082`
+How it should look like: `bot.run(host="0.0.0.0", port=9082)`  
+
+Launch your bot
+
+```
+python sample.py
+```
 
 # ngrok
 
