@@ -7,6 +7,9 @@ from webexteamssdk import WebexTeamsAPI
 from webexteamsbot.models import Response
 import sys
 import json
+import re
+import asyncio
+
 
 # __author__ = "imapex"
 # __author_email__ = "CiscoTeamsBot@imapex.io"
@@ -18,18 +21,19 @@ class TeamsBot(Flask):
     """An instance of a Webex Teams Bot"""
 
     def __init__(
-        self,
-        teams_bot_name,
-        teams_bot_token=None,
-        teams_api_url=None,
-        teams_bot_email=None,
-        teams_bot_url=None,
-        default_action="/help",
-        webhook_resource_event=None,
-        webhook_resource="messages",
-        webhook_event="created",
-        approved_users=[], 
-        debug=False,
+            self,
+            teams_bot_name,
+            teams_bot_token=None,
+            teams_api_url=None,
+            teams_bot_email=None,
+            teams_bot_url=None,
+            default_action="/help",
+            webhook_resource_event=None,
+            webhook_resource="messages",
+            webhook_event="created",
+            approved_users=[],
+            debug=False
+
     ):
         """
         Initialize a new TeamsBot
@@ -49,7 +53,9 @@ class TeamsBot(Flask):
                 to create webhooks for.
                 [{"resource": "messages", "event": "created"},
                 {"resource": "attachmentActions", "event": "created"}]
-        :param approved_users: List of approved users (by email) to interact with bot. Default all users.
+        :param approved_users:
+                List of approved users (by email) to interact with bot.
+                Default all users.
         :param debug: boolean value for debut messages
         """
 
@@ -57,10 +63,10 @@ class TeamsBot(Flask):
 
         # Verify required parameters provided
         if None in (
-            teams_bot_name,
-            teams_bot_token,
-            teams_bot_email,
-            teams_bot_token,
+                teams_bot_name,
+                teams_bot_token,
+                teams_bot_email,
+                teams_bot_token,
         ):
             raise ValueError(
                 "TeamsBot requires teams_bot_name, "
@@ -94,8 +100,13 @@ class TeamsBot(Flask):
             "/echo": {
                 "help": "Reply back with the same message sent.",
                 "callback": self.send_echo,
+                "after": 0
             },
-            "/help": {"help": "Get help.", "callback": self.send_help},
+            "/help": {
+                "help": "Get help.",
+                "callback": self.send_help,
+                "after": 0
+            },
         }
 
         # Set default help message
@@ -313,9 +324,12 @@ class TeamsBot(Flask):
             sys.stderr.write("Message from: " + message.personEmail + "\n")
 
             # Check if user is approved
-            if len(self.approved_users) > 0 and message.personEmail not in self.approved_users:
+            if len(self.approved_users) > 0 and message.personEmail \
+                    not in map(str.lower, self.approved_users):
                 # User NOT approved
-                sys.stderr.write("User: " + message.personEmail + " is not approved to interact with bot. Ignoring.\n")
+                sys.stderr.write("User: " + message.personEmail +
+                                 " is not approved to interact with bot. "
+                                 "Ignoring.\n")
                 return "Unapproved user"
 
             # Find the command that was sent, if any
@@ -341,13 +355,16 @@ class TeamsBot(Flask):
             else:
                 pass
 
+        # variable to get the message_id form the response
+        # to delete it if necessary
+        sent_reply = ""
         # allow command handlers to craft their own Teams message
         if reply and isinstance(reply, Response):
             # If the Response lacks a roomId, set it to the incoming room
             if not reply.roomId:
                 reply.roomId = room_id
             reply = reply.as_dict()
-            self.teams.messages.create(**reply)
+            sent_reply = self.teams.messages.create(**reply)
             reply = "ok"
         # Support returning a list of Responses
         elif reply and isinstance(reply, list):
@@ -356,23 +373,37 @@ class TeamsBot(Flask):
                 if isinstance(response, Response):
                     if not response.roomId:
                         response.roomId = room_id
-                    self.teams.messages.create(**response.as_dict())
-
+                    sent_reply = \
+                        self.teams.messages.create(**response.as_dict())
             reply = "ok"
         elif reply:
-            self.teams.messages.create(roomId=room_id, markdown=reply)
+            sent_reply = \
+                self.teams.messages.create(roomId=room_id, markdown=reply)
+
+        # if variable command exists and sent_reply is not a string
+        if "command" in locals() and not isinstance(sent_reply, str):
+            if command in self.commands:
+                if self.commands[command]['after'] > 0:
+                    self.async_deletion_start(
+                        sent_reply.id, self.commands[command]['after']
+                    )
+
         return reply
 
-    def add_command(self, command, help_message, callback):
+    def add_command(self, command, help_message, callback, after=0):
         """
         Add a new command to the bot
         :param command: The command string, example "/status"
         :param help_message: A Help string for this command
         :param callback: The function to run when this command is given
+        :param after: Determines the time till deletion in seconds
+                    Defaults to 0. 0 = never delete the Message
         :return:
         """
         self.commands[command.lower()] = {"help": help_message,
-                                          "callback": callback}
+                                          "callback": callback,
+                                          "after": after
+                                          }
 
     def remove_command(self, command):
         """
@@ -434,3 +465,57 @@ class TeamsBot(Flask):
         # Get sent message
         message = self.extract_message("/echo", post_data.text)
         return message
+
+    def add_user(self, user):
+        """
+        Command to add new user to approved_user list
+        :param user:
+        :return:
+        """
+        if re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)",
+                    user):
+            if user not in self.approved_users:
+                self.approved_users.append(user)
+
+    def remove_user(self, user):
+        """
+        Command to remove user from approved_user list
+        :param user:
+        :return:
+        """
+        if user in self.approved_users:
+            self.approved_users.remove(user)
+
+    def delete_message(self, message_id=None):
+        """
+        Command to delete a Message by message_id
+        :param message_id:
+        :return:
+        """
+        if message_id is not None and message_id is not "":
+            self.teams.messages.delete(message_id)
+        return
+
+    def async_deletion_start(self, message_id, after):
+        """
+        Command to start a asynchronous deletion
+        :param message_id:
+        :param after:
+        :return:
+        """
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(self._wait_delete_message(
+            message_id, after, loop)
+        )
+
+    @asyncio.coroutine
+    def _wait_delete_message(self, message_id, after, loop):
+        """
+        Command to call the asynchronous deletion for a message
+        after a specific amount of time
+        :param message_id:
+        :param after:
+        :return:
+        """
+        yield from asyncio.sleep(after)
+        self.delete_message(message_id)
